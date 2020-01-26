@@ -6,9 +6,3 @@ NodeOUs:
   PeerOUIdentifier:
     Certificate: cacerts/ca.student.clemson.com-cert.pem
     OrganizationalUnitIdentifier: peer
-  AdminOUIdentifier:
-    Certificate: cacerts/ca.student.clemson.com-cert.pem
-    OrganizationalUnitIdentifier: admin
-  OrdererOUIdentifier:
-    Certificate: cacerts/ca.student.clemson.com-cert.pem
-    OrganizationalUnitIdentifier: orderer
