@@ -1,0 +1,114 @@
+---
+
+
+################################################################################
+################################################################################
+################################################################################
+################################################################################
+
+Organizations:
+
+    - &OrdererOrg
+        Name: OrdererOrg
+
+        ID: OrdererMSP
+
+        MSPDir: ../channel-artifacts/certs/ordererOrganizations/clemson.com/msp
+
+    - &University
+        Name: UniversityMSP
+
+        ID: UniversityMSP
+
+        MSPDir: ../channel-artifacts/certs/peerOrganizations/university.clemson.com/msp
+
+        AnchorPeers:
+            - Host: peer0.university.clemson.com
+              Port: 7051
+
+    - &Student
+        Name: StudentMSP
+
+        ID: StudentMSP
+
+        MSPDir: ../channel-artifacts/certs/peerOrganizations/student.clemson.com/msp
+
+        AnchorPeers:
+            - Host: peer0.student.clemson.com
+              Port: 9051
+
+################################################################################
+################################################################################
+################################################################################
+################################################################################
+
+Orderer: &OrdererDefaults
+
+    OrdererType: solo
+
+    Addresses:
+        - orderer.clemson.com:7050
+
+    BatchTimeout: 2s
+
+    BatchSize:
+        MaxMessageCount: 10
+        AbsoluteMaxBytes: 99 MB
+        PreferredMaxBytes: 512 KB
+
+    Kafka:
+        Brokers:
+            - 127.0.0.1:9092
+
+
+    Organizations:
+
+################################################################################
+################################################################################
+################################################################################
+################################################################################
+
+Application: &ApplicationDefaults
+
+    Organizations:
+Capabilities:
+    Global: &ChannelCapabilities
+        V1_1: true
+
+
+    Orderer: &OrdererCapabilities
+        V1_1: true
+
+
+    Application: &ApplicationCapabilities
+        V1_1: true
+
+
+Profiles:
+
+    GenesisBlockGeneration:
+        Capabilities:
+            <<: *ChannelCapabilities
+        Orderer:
+            <<: *OrdererDefaults
+            Organizations:
+                - *OrdererOrg
+            Capabilities:
+                <<: *OrdererCapabilities
+        Consortiums:
+            SampleConsortium:
+                Organizations:
+                    - *University
+                    - *Student
+
+
+    ChannelCreation:
+        Consortium: SampleConsortium
+        Application:
+            <<: *ApplicationDefaults
+            Organizations:
+                    - *University
+                    - *Student
+
+            Capabilities:
+                <<: *ApplicationCapabilities

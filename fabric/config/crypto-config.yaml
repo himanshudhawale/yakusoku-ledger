@@ -1,0 +1,24 @@
+#Solo orderer
+
+OrdererOrgs:
+  - Name: Orderer
+    Domain: clemson.com
+    Specs:
+      - Hostname: orderer
+
+PeerOrgs:
+  - Name: University
+    Domain: university.clemson.com
+    EnableNodeOUs: true
+    Template:
+      Count: 2 #Two peers
+    Users:
+      Count: 1 #one user account, one admin account
+
+  - Name: Student
+    Domain: student.clemson.com
+    EnableNodeOUs: true
+    Template:
+      Count: 2
+    Users:
+      Count: 1

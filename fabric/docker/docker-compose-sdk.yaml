@@ -1,0 +1,147 @@
+version: '2'
+
+networks:
+  clemson:
+
+services:
+  orderer.clemson.com:
+    #dns_search: .
+    extends:
+      file:   base.yaml
+      service: orderer
+    networks:
+      - clemson
+
+  ### University ###
+  ca.university.clemson.com:
+    extends:
+      file:  university.yaml
+      service: ca
+    networks:
+      - clemson
+
+  peer0-db.university.clemson.com:
+    extends:
+      file: university.yaml
+      service: peer0-db
+    networks:
+      - clemson
+
+  peer1-db.university.clemson.com:
+    extends:
+      file: university.yaml
+      service: peer1-db
+    networks:
+      - clemson
+
+  peer0.university.clemson.com:
+    #dns_search: .
+    extends:
+      file:  university.yaml
+      service: peer0
+    networks:
+      - clemson
+    depends_on:
+      - peer0-db.university.clemson.com
+
+  peer1.university.clemson.com:
+    #dns_search: .
+    extends:
+      file:  university.yaml
+      service: peer1
+    networks:
+      - clemson
+    depends_on:
+      - peer1-db.university.clemson.com
+
+  ### Student ###
+  ca.student.clemson.com:
+    extends:
+      file:  student.yaml
+      service: ca
+    networks:
+      - clemson
+
+  peer0-db.student.clemson.com:
+    extends:
+      file: student.yaml
+      service: peer0-db
+    networks:
+      - clemson
+
+  peer1-db.student.clemson.com:
+    extends:
+      file: student.yaml
+      service: peer1-db
+    networks:
+      - clemson
+
+  peer0.student.clemson.com:
+    #dns_search: .
+    extends:
+      file:  student.yaml
+      service: peer0
+    networks:
+      - clemson
+    depends_on:
+      - peer0-db.student.clemson.com
+
+  peer1.student.clemson.com:
+    #dns_search: .
+    extends:
+      file:  student.yaml
+      service: peer1
+    networks:
+      - clemson
+    depends_on:
+      - peer1-db.student.clemson.com
+
+  cli:
+    container_name: cli
+    image: hyperledger/fabric-tools
+    tty: true
+    environment:
+      - GOPATH=/opt/gopath
+      - CORE_VM_ENDPOINT=unix:///host/var/run/docker.sock
+      - FABRIC_LOGGING_SPEC=DEBUG
+      - CORE_PEER_ID=cli
+      - CORE_PEER_ADDRESS=peer0.university.clemson.com:7051
+      - CORE_PEER_LOCALMSPID=UniversityMSP
+      - CORE_PEER_MSPCONFIGPATH=/opt/gopath/channel-artifacts/certs/peerOrganizations/university.clemson.com/users/Admin@university.clemson.com/msp
+      # - CORE_PEER_MSPCONFIGPATH=/etc/hyperledger/fabric/msp
+        # TLS settings
+      # - CORE_PEER_CHAINCODELISTENADDRESS=0.0.0.0:7052
+      - CORE_PEER_TLS_ENABLED=true  # to enable TLS, change to true
+      - CORE_PEER_TLS_CERT_FILE=/var/hyperledger/tls/server.crt
+      - CORE_PEER_TLS_KEY_FILE=/var/hyperledger/tls/server.key
+      - CORE_PEER_TLS_ROOTCERT_FILE=/var/hyperledger/tls/ca.crt
+      - CORE_PEER_TLS_CLIENTAUTHREQUIRED=true
+      - CORE_PEER_TLS_CLIENTROOTCAS_FILES=/var/hyperledger/users/Admin@university.clemson.com/tls/ca.crt
+      - CORE_PEER_TLS_CLIENTCERT_FILE=/var/hyperledger/users/Admin@university.clemson.com/tls/client.crt
+      - CORE_PEER_TLS_CLIENTKEY_FILE=/var/hyperledger/users/Admin@university.clemson.com/tls/client.key
+
+
+    working_dir: /opt/gopath
+    volumes:
+        - /var/run/:/host/var/run/
+        - ../channel-artifacts:/opt/gopath/channel-artifacts/
+        - ../../src/chaincode/:/opt/gopath/src/chaincode/
+        # - ../../src/github.com/:/opt/gopath/src/github.com/
+        - ../channel-artifacts/certs/peerOrganizations/university.clemson.com/peers/peer0.university.clemson.com/tls:/var/hyperledger/tls
+        - ../channel-artifacts/certs/peerOrganizations/university.clemson.com/users:/var/hyperledger/users
+        - ../createChannel.sh:/opt/gopath/createChannel.sh
+
+
+
+
+    depends_on:
+      - orderer.clemson.com
+      - ca.university.clemson.com
+      - peer0.university.clemson.com
+      - peer1.university.clemson.com
+      - ca.student.clemson.com
+      - peer0.student.clemson.com
+      - peer1.student.clemson.com
+
+    networks:
+      - clemson
