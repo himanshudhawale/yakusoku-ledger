@@ -76,6 +76,7 @@ services:
       - CORE_LEDGER_STATE_COUCHDBCONFIG_USERNAME=universitypeer1admin
       - CORE_LEDGER_STATE_COUCHDBCONFIG_PASSWORD=pass
       - CORE_PEER_MSPCONFIGPATH=/etc/hyperledger/fabric/users/Admin@university.clemson.com/msp
+      #/etc/hyperledger/fabric/msp
       - CORE_PEER_TLS_CLIENTROOTCAS_FILES=/etc/hyperledger/fabric/users/Admin@university.clemson.com/tls/ca.crt
       - CORE_PEER_TLS_CLIENTCERT_FILE=/etc/hyperledger/fabric/users/Admin@university.clemson.com/tls/client.crt
       - CORE_PEER_TLS_CLIENTKEY_FILE=/etc/hyperledger/fabric/users/Admin@university.clemson.com/tls/client.key
