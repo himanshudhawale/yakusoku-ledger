@@ -1,0 +1,55 @@
+{
+	"network-config": {
+		"orderer": {
+			"url": "grpcs://localhost:7050",
+			"server-hostname": "orderer.clemson.com",
+			"tls_cacerts": "../../fabric/channel-artifacts/certs/ordererOrganizations/chainergy.com/orderers/orderer.chainergy.com/tls/ca.crt"
+		},
+		"org1": {
+			"name": "UniversityMSP",
+			"mspid": "UniversityMSP",
+			"ca": "https://localhost:7054",
+			"peers": {
+				"peer1": {
+					"requests": "grpcs://localhost:7051",
+					"events": "grpcs://localhost:7053",
+					"server-hostname": "peer0.university.clemson.com",
+					"tls_cacerts": "../../fabric/channel-artifacts/certs/peerOrganizations/university.clemson.com/peers/peer0.university.clemson.com/tls/ca.crt"
+				},
+				"peer2": {
+					"requests": "grpcs://localhost:8051",
+					"events": "grpcs://localhost:8053",
+					"server-hostname": "peer1.university.chainergy.com",
+					"tls_cacerts": "../../fabric/channel-artifacts/certs/peerOrganizations/university.clemson.com/peers/peer1.university.clemson.com/tls/ca.crt"
+				}
+			},
+			"admin": {
+				"key": "../../fabric/channel-artifacts/certs/peerOrganizations/university.clemson.com/users/Admin@university.clemson.com/msp/keystore",
+				"cert": "../../fabric/channel-artifacts/certs/peerOrganizations/university.clemson.com/users/Admin@university.clemson.com/msp/signcerts"
+			}
+		},
+		"org2": {
+			"name": "StudentMSP",
+			"mspid": "StudentMSP",
+			"ca": "https://localhost:8054",
+			"peers": {
+				"peer1": {
+					"requests": "grpcs://localhost:9051",
+					"events": "grpcs://localhost:9053",
+					"server-hostname": "peer0.student.clemson.com",
+					"tls_cacerts": "../../fabric/channel-artifacts/certs/peerOrganizations/student.clemson.com/peers/peer0.student.clemson.com/tls/ca.crt"
+				},
+				"peer2": {
+					"requests": "grpcs://localhost:10051",
+					"events": "grpcs://localhost:10053",
+					"server-hostname": "peer1.student.clemson.com",
+					"tls_cacerts": "../../fabric/channel-artifacts/certs/peerOrganizations/student.clemson.com/peers/peer1.student.clemson.com/tls/ca.crt"
+				}
+			},
+			"admin": {
+				"key": "../../fabric/channel-artifacts/certs/peerOrganizations/student.clemson.com/users/Admin@student.clemson.com/msp/keystore",
+				"cert": "../../fabric/channel-artifacts/certs/peerOrganizations/student.clemson.com/users/Admin@student.clemson.com/msp/signcerts"
+			}
+        }
+	}
+}
