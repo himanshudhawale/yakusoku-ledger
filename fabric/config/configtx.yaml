@@ -1,5 +1,34 @@
 ---
 
+Profiles:
+
+    GenesisBlockGeneration:
+        Capabilities:
+            <<: *ChannelCapabilities
+        Orderer:
+            <<: *OrdererDefaults
+            Organizations:
+                - *OrdererOrg
+            Capabilities:
+                <<: *OrdererCapabilities
+        Consortiums:
+            SampleConsortium:
+                Organizations:
+                    - *University
+                    - *Student
+
+
+    ChannelCreation:
+        Consortium: SampleConsortium
+        Application:
+            <<: *ApplicationDefaults
+            Organizations:
+                    - *University
+                    - *Student
+
+            Capabilities:
+                <<: *ApplicationCapabilities
+
 
 ################################################################################
 ################################################################################
@@ -83,32 +112,3 @@ Capabilities:
     Application: &ApplicationCapabilities
         V1_1: true
 
-
-Profiles:
-
-    GenesisBlockGeneration:
-        Capabilities:
-            <<: *ChannelCapabilities
-        Orderer:
-            <<: *OrdererDefaults
-            Organizations:
-                - *OrdererOrg
-            Capabilities:
-                <<: *OrdererCapabilities
-        Consortiums:
-            SampleConsortium:
-                Organizations:
-                    - *University
-                    - *Student
-
-
-    ChannelCreation:
-        Consortium: SampleConsortium
-        Application:
-            <<: *ApplicationDefaults
-            Organizations:
-                    - *University
-                    - *Student
-
-            Capabilities:
-                <<: *ApplicationCapabilities
