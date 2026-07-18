@@ -2,6 +2,7 @@
 
 var crypto = require('crypto');
 var http = require('http');
+var path = require('path');
 var util = require('util');
 var bodyParser = require('body-parser');
 var bearerToken = require('express-bearer-token');
@@ -32,6 +33,7 @@ app.use(cors());
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({extended: false}));
 app.use(bearerToken());
+app.use(express.static(path.join(__dirname, 'public')));
 
 function errorResponse(field) {
 	return {
@@ -78,6 +80,21 @@ function sendFabricResult(res, next, orgName, operation) {
 	});
 }
 
+function sendFabricJsonResult(res, next, orgName, operation) {
+	sendResult(res, next, function() {
+		return helper.runForOrg(orgName, operation).then(function(result) {
+			if (typeof result !== 'string') {
+				return result;
+			}
+			try {
+				return JSON.parse(result);
+			} catch (err) {
+				return result;
+			}
+		});
+	});
+}
+
 function requireAdmin(req, res, next) {
 	if (req.role !== 'admin') {
 		return res.status(403).json({
@@ -86,6 +103,16 @@ function requireAdmin(req, res, next) {
 		});
 	}
 	return next();
+}
+
+function secretsMatch(provided, expected) {
+	if (!provided || !expected) {
+		return false;
+	}
+	var providedBuffer = Buffer.from(String(provided));
+	var expectedBuffer = Buffer.from(String(expected));
+	return providedBuffer.length === expectedBuffer.length &&
+		crypto.timingSafeEqual(providedBuffer, expectedBuffer);
 }
 
 app.get('/health', function(req, res) {
@@ -135,9 +162,16 @@ app.post('/users', function(req, res, next) {
 			message: 'orgName must be org1 or org2'
 		});
 	}
+	if (orgName === 'org1' &&
+		!secretsMatch(req.body.organizationSecret, process.env.UNIVERSITY_ENROLLMENT_SECRET)) {
+		return res.status(403).json({
+			success: false,
+			message: 'A valid university enrollment secret is required for org1'
+		});
+	}
 
 	var adminSecret = process.env.ADMIN_ENROLLMENT_SECRET;
-	var role = adminSecret && req.body.adminSecret === adminSecret ? 'admin' : 'user';
+	var role = secretsMatch(req.body.adminSecret, adminSecret) ? 'admin' : 'user';
 	sendFabricResult(res, next, orgName, function() {
 		return helper.getRegisteredUsers(username, orgName, true).then(function(response) {
 			if (!response || typeof response === 'string') {
@@ -152,6 +186,126 @@ app.post('/users', function(req, res, next) {
 			}, app.get('secret'));
 			return response;
 		});
+	});
+});
+
+app.get('/api/agreements', function(req, res, next) {
+	sendFabricJsonResult(res, next, req.orgname, function() {
+		return query.queryChaincode(
+			'peer1',
+			hfc.getConfigSetting('channelName'),
+			'studentuniversity',
+			[],
+			'queryAllAgreements',
+			req.username,
+			req.orgname
+		);
+	});
+});
+
+app.post('/api/agreements', function(req, res, next) {
+	if (req.orgname !== 'org2') {
+		return res.status(403).json({
+			success: false,
+			message: 'Only student organization members may submit agreements'
+		});
+	}
+	var fields = [
+		req.body.studentName,
+		req.body.email,
+		req.body.date,
+		req.body.amount,
+		req.body.universityName
+	];
+	for (var i = 0; i < fields.length; i++) {
+		if (!requireField(res, fields[i], 'agreement field')) {
+			return;
+		}
+	}
+	var args = fields.map(String);
+	args.push(String(req.body.documentHash || ''));
+	sendFabricResult(res, next, req.orgname, function() {
+		return invoke.invokeChaincode(
+			['peer1', 'peer2'],
+			hfc.getConfigSetting('channelName'),
+			'studentuniversity',
+			'createAgreement',
+			args,
+			req.username,
+			req.orgname
+		).then(function(transactionId) {
+			return {success: true, transactionId: transactionId};
+		});
+	});
+});
+
+app.post('/api/agreements/:agreementId/review', function(req, res, next) {
+	if (req.orgname !== 'org1') {
+		return res.status(403).json({
+			success: false,
+			message: 'Only university organization members may review agreements'
+		});
+	}
+	if (!requireField(res, req.body.decision, 'decision')) {
+		return;
+	}
+	sendFabricResult(res, next, req.orgname, function() {
+		return invoke.invokeChaincode(
+			['peer1', 'peer2'],
+			hfc.getConfigSetting('channelName'),
+			'studentuniversity',
+			'reviewAgreement',
+			[req.params.agreementId, String(req.body.decision)],
+			req.username,
+			req.orgname
+		).then(function(transactionId) {
+			return {success: true, transactionId: transactionId};
+		});
+	});
+});
+
+app.post('/api/agreements/:agreementId/verify', function(req, res, next) {
+	if (!requireField(res, req.body.documentHash, 'documentHash')) {
+		return;
+	}
+	sendFabricJsonResult(res, next, req.orgname, function() {
+		return query.queryChaincode(
+			'peer1',
+			hfc.getConfigSetting('channelName'),
+			'studentuniversity',
+			[req.params.agreementId, String(req.body.documentHash)],
+			'verifyDocument',
+			req.username,
+			req.orgname
+		);
+	});
+});
+
+app.get('/api/agreements/:agreementId/history', function(req, res, next) {
+	sendFabricJsonResult(res, next, req.orgname, function() {
+		return query.queryChaincode(
+			'peer1',
+			hfc.getConfigSetting('channelName'),
+			'studentuniversity',
+			[req.params.agreementId],
+			'getHistoryForAgreement',
+			req.username,
+			req.orgname
+		);
+	});
+});
+
+app.get('/api/agreements/:agreementId', function(req, res, next) {
+	sendFabricJsonResult(res, next, req.orgname, function() {
+		return query.queryChaincode(
+			'peer1',
+			hfc.getConfigSetting('channelName'),
+			'studentuniversity',
+			[req.params.agreementId],
+			'getAgreement',
+			req.username,
+			req.orgname
+		);
 	});
 });
 

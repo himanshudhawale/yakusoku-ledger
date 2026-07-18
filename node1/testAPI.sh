@@ -6,17 +6,18 @@ command -v jq >/dev/null || {
 	exit 1
 }
 : "${ADMIN_ENROLLMENT_SECRET:?Set ADMIN_ENROLLMENT_SECRET to the value used by the API}"
+: "${UNIVERSITY_ENROLLMENT_SECRET:?Set UNIVERSITY_ENROLLMENT_SECRET to the value used by the API}"
 
 api=http://localhost:4000
 
 enroll() {
 	curl --fail --silent --show-error -X POST "$api/users" \
 		-H "content-type: application/json" \
-		-d "{\"username\":\"$1\",\"orgName\":\"$2\",\"adminSecret\":\"$ADMIN_ENROLLMENT_SECRET\"}"
+		-d "{\"username\":\"$1\",\"orgName\":\"$2\",\"adminSecret\":\"$ADMIN_ENROLLMENT_SECRET\",\"organizationSecret\":\"$3\"}"
 }
 
-org1_response=$(enroll network-admin-org1 org1)
-org2_response=$(enroll network-admin-org2 org2)
+org1_response=$(enroll network-admin-org1 org1 "$UNIVERSITY_ENROLLMENT_SECRET")
+org2_response=$(enroll network-admin-org2 org2 "")
 org1_token=$(printf '%s' "$org1_response" | jq -er .token)
 org2_token=$(printf '%s' "$org2_response" | jq -er .token)
 
@@ -44,18 +45,24 @@ sleep 5
 request "$org1_token" POST /channels/channel1/peers '{"peers":["peer1","peer2"]}'
 request "$org2_token" POST /channels/channel1/peers '{"peers":["peer1","peer2"]}'
 
-chaincode='{"peers":["peer1","peer2"],"chaincodeName":"studentuniversity","chaincodePath":"chaincode","chaincodeVersion":"v1"}'
+chaincode='{"peers":["peer1","peer2"],"chaincodeName":"studentuniversity","chaincodePath":"chaincode","chaincodeVersion":"v2"}'
 request "$org1_token" POST /chaincodes "$chaincode"
 request "$org2_token" POST /chaincodes "$chaincode"
 
 request "$org1_token" POST /channels/channel1/chaincodes \
-	'{"peers":["peer1","peer2"],"chaincodeName":"studentuniversity","chaincodeVersion":"v1","fcn":"Init","args":["Ada Lovelace","ada@example.com","2026-07-18","25000","Clemson University"]}'
+	'{"peers":["peer1","peer2"],"chaincodeName":"studentuniversity","chaincodeVersion":"v2","fcn":"Init","args":["Genesis Student","genesis@example.com","2026-07-18","1","Clemson University"]}'
 
-request "$org1_token" POST /channels/channel1/chaincodes/studentuniversity \
-	'{"peers":["peer1","peer2"],"fcn":"initStudentUniversity","args":["Ada Lovelace","ada@example.com","2026-08-01","24000","Clemson University"]}'
+document_hash=$(printf 'yakusoku sample agreement' | sha256sum | cut -d ' ' -f1)
+create_response=$(request "$org2_token" POST /api/agreements \
+	"{\"studentName\":\"Ada Lovelace\",\"email\":\"ada@example.com\",\"date\":\"2026-08-01\",\"amount\":\"24000\",\"universityName\":\"Clemson University\",\"documentHash\":\"$document_hash\"}")
+echo "$create_response"
 
-encoded_args=$(jq -rn --arg value '["ada@example.com"]' '$value|@uri')
-request "$org1_token" GET \
-	"/channels/channel1/chaincodes/studentuniversity?peer=peer1&fcn=queryByStudentEmail&args=$encoded_args"
+agreements=$(request "$org2_token" GET /api/agreements)
+agreement_id=$(printf '%s' "$agreements" | jq -er '.[] | select(.Value.Email == "ada@example.com") | .Key')
+request "$org2_token" POST "/api/agreements/$agreement_id/verify" \
+	"{\"documentHash\":\"$document_hash\"}"
+request "$org1_token" POST "/api/agreements/$agreement_id/review" \
+	'{"decision":"approved"}'
+request "$org1_token" GET "/api/agreements/$agreement_id"
 
 echo "Yakusoku Ledger API workflow completed successfully."

@@ -1,0 +1,217 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#0b0d0f">
+  <meta name="description" content="Yakusoku Ledger — trusted student-university agreements on Hyperledger Fabric.">
+  <title>Yakusoku Ledger</title>
+  <link rel="stylesheet" href="styles.css">
+  <script src="app.js" defer></script>
+</head>
+<body>
+  <a class="skip-link" href="#main">Skip to content</a>
+  <div class="app-shell">
+    <aside class="sidebar" id="sidebar" aria-label="Primary navigation">
+      <a class="brand" href="#overview" aria-label="Yakusoku Ledger home">
+        <span class="brand-mark" aria-hidden="true">約</span>
+        <span><strong>YAKUSOKU</strong><small>LEDGER</small></span>
+      </a>
+      <nav>
+        <a class="nav-link active" href="#overview" data-section="overview">
+          <span aria-hidden="true">⌂</span> Overview
+        </a>
+        <a class="nav-link" href="#agreements" data-section="agreements">
+          <span aria-hidden="true">文</span> Agreements
+        </a>
+        <a class="nav-link" href="#create" data-section="create">
+          <span aria-hidden="true">＋</span> New agreement
+        </a>
+        <a class="nav-link" href="#verify" data-section="verify">
+          <span aria-hidden="true">✓</span> Verify document
+        </a>
+        <a class="nav-link" href="#activity" data-section="activity">
+          <span aria-hidden="true">◌</span> Activity
+        </a>
+      </nav>
+      <div class="network-card">
+        <div class="network-row"><span class="status-dot"></span><span>Fabric network</span></div>
+        <strong>Channel 1</strong>
+        <small>Peer status is checked after sign in</small>
+      </div>
+      <p class="sidebar-foot">約束 · A promise, made permanent.</p>
+    </aside>
+
+    <div class="page">
+      <header class="topbar">
+        <button class="icon-button menu-button" id="menuButton" type="button" aria-label="Open navigation" aria-expanded="false" aria-controls="sidebar">
+          <span></span><span></span><span></span>
+        </button>
+        <div class="topbar-title">
+          <p>STUDENT–UNIVERSITY AGREEMENT NETWORK</p>
+          <h1 id="pageTitle">Overview</h1>
+        </div>
+        <div class="top-actions">
+          <button class="icon-button notification-button" type="button" data-scroll="activity" aria-label="View notifications">
+            <span aria-hidden="true">♢</span><i>3</i>
+          </button>
+          <button class="auth-button" id="authButton" type="button">
+            <span class="avatar" aria-hidden="true">入</span>
+            <span class="auth-copy"><strong>Sign in</strong><small>Connect identity</small></span>
+          </button>
+        </div>
+      </header>
+
+      <main id="main">
+        <section class="hero section-anchor" id="overview" aria-labelledby="overview-title">
+          <div>
+            <p class="eyebrow">LEDGER OVERVIEW <span>•</span> <span id="today"></span></p>
+            <h2 id="overview-title">Promises, <em>preserved.</em></h2>
+            <p class="hero-copy">A shared source of truth for agreements between students and universities—transparent, verifiable, and immutable.</p>
+          </div>
+          <button class="primary-button" type="button" data-scroll="create"><span aria-hidden="true">＋</span> Create agreement</button>
+        </section>
+
+        <div class="preview-banner" role="note">
+          <span class="preview-pill">PREVIEW DATA</span>
+          <p>Sample records are shown until you authenticate. Ledger mutations always require a verified identity.</p>
+          <button type="button" data-open-auth>Connect now</button>
+        </div>
+
+        <section class="stats-grid" aria-label="Agreement statistics">
+          <article class="stat-card">
+            <span class="stat-icon vermilion" aria-hidden="true">文</span>
+            <div><p>Total agreements</p><strong data-stat="total">248</strong><small><b>+12</b> this month</small></div>
+          </article>
+          <article class="stat-card">
+            <span class="stat-icon amber" aria-hidden="true">待</span>
+            <div><p>Pending approvals</p><strong data-stat="pending">17</strong><small>6 need attention</small></div>
+          </article>
+          <article class="stat-card">
+            <span class="stat-icon green" aria-hidden="true">¥</span>
+            <div><p>Approved value</p><strong data-stat="value">¥1.84M</strong><small><b>+8.4%</b> this quarter</small></div>
+          </article>
+          <article class="stat-card">
+            <span class="stat-icon blue" aria-hidden="true">✓</span>
+            <div><p>Verified documents</p><strong data-stat="verified">231</strong><small>93.1% verified</small></div>
+          </article>
+        </section>
+
+        <section class="panel section-anchor" id="agreements" aria-labelledby="agreements-title">
+          <div class="panel-head">
+            <div><p class="eyebrow">AGREEMENT REGISTRY</p><h2 id="agreements-title">Recent agreements</h2></div>
+            <div class="panel-actions">
+              <label class="search-field"><span class="sr-only">Search agreements</span><span aria-hidden="true">⌕</span><input id="agreementSearch" type="search" placeholder="Search agreements"></label>
+              <button class="ghost-button" id="refreshButton" type="button">Refresh</button>
+            </div>
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th>Agreement</th><th>Student</th><th>University</th><th>Value</th><th>Status</th><th>Date</th><th><span class="sr-only">Actions</span></th></tr></thead>
+              <tbody id="agreementRows"></tbody>
+            </table>
+          </div>
+          <p class="empty-state" id="agreementEmpty" hidden>No agreements match your search.</p>
+          <div class="panel-foot"><span id="recordCount">Showing 4 preview records</span><span class="ledger-mark"><i></i> Synced to ledger</span></div>
+        </section>
+
+        <div class="split-layout">
+          <section class="panel section-anchor form-panel" id="create" aria-labelledby="create-title">
+            <div class="panel-head">
+              <div><p class="eyebrow">NEW COMMITMENT</p><h2 id="create-title">Create agreement</h2></div>
+              <span class="auth-required">AUTH REQUIRED</span>
+            </div>
+            <form id="createForm">
+              <div class="form-grid">
+                <label><span>Student name</span><input name="studentName" autocomplete="name" required placeholder="e.g. Aiko Tanaka"></label>
+                <label><span>Student email</span><input name="email" type="email" autocomplete="email" required placeholder="aiko@example.edu"></label>
+                <label class="full"><span>University</span><input name="university" required placeholder="e.g. Kyoto International University"></label>
+                <label><span>Agreement value (JPY)</span><input name="amount" type="number" min="1" step="1" inputmode="numeric" required placeholder="500000"></label>
+                <label><span>Effective date</span><input name="date" type="date" required></label>
+                <label class="full file-field">
+                  <span>Supporting document</span>
+                  <input name="document" id="agreementDocument" type="file" required>
+                  <span class="file-drop"><b>Choose a document</b><small>PDF or other signed file · hashed locally</small></span>
+                </label>
+              </div>
+              <output class="hash-output" id="createHash" aria-live="polite">SHA-256 fingerprint will appear here.</output>
+              <p class="form-note">Only the SHA-256 fingerprint is stored on the ledger. The document remains private on your device.</p>
+              <button class="primary-button full-button" type="submit">Submit to ledger <span aria-hidden="true">→</span></button>
+              <p class="form-status" id="createStatus" role="status"></p>
+            </form>
+          </section>
+
+          <div class="side-stack">
+            <section class="panel section-anchor verify-panel" id="verify" aria-labelledby="verify-title">
+              <div class="seal" aria-hidden="true">証</div>
+              <p class="eyebrow">INTEGRITY CHECK</p>
+              <h2 id="verify-title">Verify a document</h2>
+              <p>Select a document to calculate its fingerprint locally and compare it with the ledger.</p>
+              <label class="verify-drop">
+                <input id="verifyFile" type="file">
+                <span aria-hidden="true">⌁</span><b>Drop or choose a file</b><small>Nothing is uploaded while hashing</small>
+              </label>
+              <output class="hash-output" id="verifyHash" aria-live="polite">Awaiting a document.</output>
+              <label class="verify-agreement"><span>Agreement to verify</span><select id="verifyAgreement" required><option value="">Select a live agreement</option></select></label>
+              <button class="secondary-button full-button" id="verifyButton" type="button" disabled>Compare with ledger</button>
+              <p class="form-status" id="verifyStatus" role="status"></p>
+            </section>
+
+            <section class="panel workflow-panel" aria-labelledby="workflow-title">
+              <div><p class="eyebrow">APPROVAL WORKFLOW</p><h2 id="workflow-title">Review queue</h2></div>
+              <p id="workflowMessage">Sign in with an administrator identity to approve or reject submitted agreements.</p>
+              <div class="workflow-count"><span>Submitted</span><strong id="reviewCount">2</strong></div>
+              <div id="reviewQueue" class="review-queue"></div>
+            </section>
+          </div>
+        </div>
+
+        <section class="panel section-anchor activity-panel" id="activity" aria-labelledby="activity-title">
+          <div class="panel-head">
+            <div><p class="eyebrow">NETWORK PULSE</p><h2 id="activity-title">Activity &amp; notifications</h2></div>
+            <button class="text-button" id="clearActivity" type="button">Mark all read</button>
+          </div>
+          <ol class="timeline" id="activityList">
+            <li><span class="timeline-icon green">✓</span><div><strong>Document fingerprint verified</strong><p>AGR-2026-0241 matched its ledger record.</p><time datetime="2026-07-18T13:58:00-07:00">47 minutes ago</time></div></li>
+            <li><span class="timeline-icon vermilion">文</span><div><strong>New agreement submitted</strong><p>Mei Nakamura submitted an agreement with Waseda University.</p><time datetime="2026-07-18T11:45:00-07:00">3 hours ago</time></div></li>
+            <li><span class="timeline-icon amber">待</span><div><strong>Approval requested</strong><p>Agreement AGR-2026-0239 is waiting for university review.</p><time datetime="2026-07-17">Yesterday</time></div></li>
+          </ol>
+        </section>
+      </main>
+      <footer><span>YAKUSOKU LEDGER</span><p>Built on Hyperledger Fabric · Cryptographic integrity by design</p><span>NETWORK 01</span></footer>
+    </div>
+  </div>
+  <div class="mobile-overlay" id="mobileOverlay"></div>
+
+  <dialog id="authDialog" aria-labelledby="auth-title">
+    <form method="dialog" class="modal-close-form"><button value="cancel" class="icon-button" aria-label="Close sign-in dialog">×</button></form>
+    <div class="modal-seal" aria-hidden="true">約</div>
+    <p class="eyebrow">FABRIC IDENTITY</p>
+    <h2 id="auth-title">Connect to the ledger</h2>
+    <p>Enroll an organization identity to access live records and submit transactions.</p>
+    <form id="authForm">
+      <label><span>Username</span><input name="username" autocomplete="username" required placeholder="Your enrollment name"></label>
+      <fieldset>
+        <legend>Organization</legend>
+        <label class="org-option"><input type="radio" name="orgName" value="org1" checked><span><b>Org 1</b><small>University organization</small></span></label>
+        <label class="org-option"><input type="radio" name="orgName" value="org2"><span><b>Org 2</b><small>Student organization</small></span></label>
+      </fieldset>
+      <label><span>Network admin secret <small>Optional</small></span><input name="adminSecret" type="password" autocomplete="current-password" placeholder="Only required for network management"></label>
+      <label><span>University enrollment secret <small>Org 1 only</small></span><input name="organizationSecret" type="password" autocomplete="off" placeholder="Required to join the university organization"></label>
+      <button class="primary-button full-button" type="submit">Enroll &amp; connect</button>
+      <p class="form-status" id="authStatus" role="status"></p>
+    </form>
+    <p class="security-note">Your token remains in this browser and is sent only to this origin.</p>
+  </dialog>
+
+  <dialog id="historyDialog" aria-labelledby="history-title">
+    <form method="dialog" class="modal-close-form"><button value="cancel" class="icon-button" aria-label="Close agreement history">×</button></form>
+    <p class="eyebrow">IMMUTABLE AUDIT TRAIL</p>
+    <h2 id="history-title">Agreement history</h2>
+    <p id="historySubtitle">Every committed version of this agreement.</p>
+    <ol class="history-list" id="historyList"></ol>
+  </dialog>
+
+  <div class="toast-region" id="toastRegion" aria-live="polite" aria-atomic="true"></div>
+</body>
+</html>

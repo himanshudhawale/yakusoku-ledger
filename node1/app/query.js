@@ -30,7 +30,11 @@ var queryChaincode = async function(peer, channelName, chaincodeName, args, fcn,
 		};
 		let response_payloads = await channel.queryByChaincode(request);
 
-		if (response_payloads) {
+		if (response_payloads && response_payloads.length) {
+			let queryError = response_payloads.find((payload) => payload instanceof Error);
+			if (queryError) {
+				throw queryError;
+			}
 			logger.info(response_payloads);
 			let payload = response_payloads[0].toString('utf8');
 			logger.info(payload);

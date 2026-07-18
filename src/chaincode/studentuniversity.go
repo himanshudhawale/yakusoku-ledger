@@ -10,12 +10,18 @@ import (
 	"strings"
 	"time"
 
+	"github.com/hyperledger/fabric/core/chaincode/lib/cid"
 	"github.com/hyperledger/fabric/core/chaincode/shim"
 	"github.com/hyperledger/fabric/protos/peer"
 )
 
-type StudentUniversityContract struct {
-}
+const (
+	statusSubmitted = "submitted"
+	statusApproved  = "approved"
+	statusRejected  = "rejected"
+)
+
+type StudentUniversityContract struct{}
 
 type agreement struct {
 	ContractID     string  `json:"Key"`
@@ -24,262 +30,367 @@ type agreement struct {
 	Date           string  `json:"Date"`
 	Amount         float64 `json:"Amount"`
 	Email          string  `json:"Email"`
+	DocumentHash   string  `json:"DocumentHash"`
+	Status         string  `json:"Status"`
+	CreatedBy      string  `json:"CreatedBy"`
+	ReviewedBy     string  `json:"ReviewedBy,omitempty"`
+	UpdatedAt      string  `json:"UpdatedAt"`
 }
 
-func (t *StudentUniversityContract) Init(stubInterface shim.ChaincodeStubInterface) peer.Response {
-	fmt.Println("Student University Contract Initiated")
-
-	_, args := stubInterface.GetFunctionAndParameters()
-
-	if len(args) != 5 {
-		return shim.Error("Incorrect number of arguments.")
-	}
-	return t.initStudentUniversity(stubInterface, args)
+type queryRecord struct {
+	Key   string          `json:"Key"`
+	Value json.RawMessage `json:"Value"`
 }
 
-func (t *StudentUniversityContract) Invoke(stubInterface shim.ChaincodeStubInterface) peer.Response {
-	function, args := stubInterface.GetFunctionAndParameters()
-	fmt.Println("Invoke has started running " + function)
-
-	// Handle different functions
-	if function == "initStudentUniversity" {
-		return t.initStudentUniversity(stubInterface, args)
-	} else if function == "queryByStudentEmail" {
-		return t.queryByStudentEmail(stubInterface, args)
-	} else if function == "getHistoryForStudent" {
-		return t.getHistoryForStudent(stubInterface, args)
-	} else if function == "invokeFunctionStudentUniversity" {
-		return t.invokeFunctionStudentUniversity(stubInterface, args)
-	}
-	fmt.Println("invoke did not find func: " + function) //error
-	return shim.Error("Received unknown function invocation")
-
+type historyRecord struct {
+	TxID      string          `json:"TxId"`
+	Value     json.RawMessage `json:"Value"`
+	Timestamp string          `json:"Timestamp"`
+	IsDelete  bool            `json:"IsDelete"`
 }
 
-func (t *StudentUniversityContract) initStudentUniversity(stubInterface shim.ChaincodeStubInterface, args []string) peer.Response {
-	var err error
+func (t *StudentUniversityContract) Init(stub shim.ChaincodeStubInterface) peer.Response {
+	_, args := stub.GetFunctionAndParameters()
+	if len(args) != 5 && len(args) != 6 {
+		return shim.Error("Incorrect number of arguments. Expecting 5 or 6")
+	}
+	return t.createAgreement(stub, args, true)
+}
 
-	if len(args) != 5 {
-		return shim.Error("Incorrect number of arguments. Expecting 5")
-	}
-	fmt.Println("- start init Student University contract")
+func (t *StudentUniversityContract) Invoke(stub shim.ChaincodeStubInterface) peer.Response {
+	function, args := stub.GetFunctionAndParameters()
 
-	if len(args[0]) <= 0 {
-		return shim.Error("1st argument must be a non-empty string")
+	switch function {
+	case "initStudentUniversity", "createAgreement":
+		return t.createAgreement(stub, args, false)
+	case "queryByStudentEmail":
+		return t.queryByStudentEmail(stub, args)
+	case "queryAllAgreements":
+		return t.queryAllAgreements(stub, args)
+	case "getHistoryForStudent":
+		return t.getHistoryForStudent(stub, args)
+	case "getHistoryForAgreement":
+		return t.getHistoryForAgreement(stub, args)
+	case "invokeFunctionStudentUniversity", "getAgreement":
+		return t.getAgreement(stub, args)
+	case "reviewAgreement":
+		return t.reviewAgreement(stub, args)
+	case "verifyDocument":
+		return t.verifyDocument(stub, args)
+	default:
+		return shim.Error("Received unknown function invocation: " + function)
 	}
-	if len(args[1]) <= 0 {
-		return shim.Error("2nd argument must be a non-empty string")
+}
+
+func (t *StudentUniversityContract) createAgreement(stub shim.ChaincodeStubInterface, args []string, lifecycleInit bool) peer.Response {
+	if len(args) != 5 && len(args) != 6 {
+		return shim.Error("Incorrect number of arguments. Expecting 5 or 6")
 	}
-	if len(args[2]) <= 0 {
-		return shim.Error("3rd argument must be a non-empty string")
-	}
-	if len(args[3]) <= 0 {
-		return shim.Error("4th argument must be a non-empty string")
-	}
-	if len(args[4]) <= 0 {
-		return shim.Error("5th argument must be a non-empty string")
+	for i, arg := range args[:5] {
+		if strings.TrimSpace(arg) == "" {
+			return shim.Error(fmt.Sprintf("Argument %d must be a non-empty string", i+1))
+		}
 	}
 
-	studentName := strings.ToLower(args[0])
-	studentEmail := strings.ToLower(args[1])
-	currentDate := strings.ToLower(args[2])
 	amount, err := strconv.ParseFloat(args[3], 64)
-	universityName := strings.ToLower(args[4])
-	if err != nil {
-		return shim.Error("4th argument must be a numeric string")
+	if err != nil || amount <= 0 {
+		return shim.Error("4th argument must be a positive numeric string")
 	}
 
-	hash := sha256.New()
-	hash.Write([]byte(studentName + universityName))
-	contractID := hex.EncodeToString(hash.Sum(nil))
+	studentName := strings.ToLower(strings.TrimSpace(args[0]))
+	studentEmail := strings.ToLower(strings.TrimSpace(args[1]))
+	currentDate := strings.TrimSpace(args[2])
+	if _, err = time.Parse("2006-01-02", currentDate); err != nil {
+		return shim.Error("3rd argument must be an ISO date in YYYY-MM-DD format")
+	}
+	universityName := strings.ToLower(strings.TrimSpace(args[4]))
+	documentHash := ""
+	if len(args) == 6 {
+		documentHash = strings.ToLower(strings.TrimSpace(args[5]))
+		if documentHash != "" && !isSHA256(documentHash) {
+			return shim.Error("6th argument must be an empty value or a SHA-256 hash")
+		}
+	}
 
-	studentContract := &agreement{contractID, studentName, universityName, currentDate, amount, studentEmail}
-	studentContractJSONasBytes, err := json.Marshal(studentContract)
+	creatorMSP, err := cid.GetMSPID(stub)
+	if err != nil {
+		return shim.Error("Unable to identify transaction creator: " + err.Error())
+	}
+	if !lifecycleInit && creatorMSP != "StudentMSP" {
+		return shim.Error("Only a StudentMSP member may submit agreements")
+	}
+	updatedAt, err := transactionTime(stub)
 	if err != nil {
 		return shim.Error(err.Error())
 	}
 
-	err = stubInterface.PutState(contractID, studentContractJSONasBytes)
+	contractID := agreementID(studentName, universityName)
+	existing, err := stub.GetState(contractID)
 	if err != nil {
 		return shim.Error(err.Error())
 	}
+	if existing != nil {
+		return shim.Error("An agreement already exists for this student and university")
+	}
 
-	fmt.Println("- end init studentContract" + "Transaction ID: " + stubInterface.GetTxID())
-	return shim.Success(nil)
+	record := agreement{
+		ContractID:     contractID,
+		StudentName:    studentName,
+		UniversityName: universityName,
+		Date:           currentDate,
+		Amount:         amount,
+		Email:          studentEmail,
+		DocumentHash:   documentHash,
+		Status:         statusSubmitted,
+		CreatedBy:      creatorMSP,
+		UpdatedAt:      updatedAt,
+	}
+	payload, err := json.Marshal(record)
+	if err != nil {
+		return shim.Error(err.Error())
+	}
+	if err = stub.PutState(contractID, payload); err != nil {
+		return shim.Error(err.Error())
+	}
+	if err = stub.SetEvent("AgreementSubmitted", payload); err != nil {
+		return shim.Error(err.Error())
+	}
+	return shim.Success(payload)
 }
 
-//Function
-// =========================================================================================
-func (t *StudentUniversityContract) queryByStudentEmail(stubInterface shim.ChaincodeStubInterface, args []string) peer.Response {
-
-	if len(args) != 1 {
-		return shim.Error("Incorrect number of arguments. Expecting 1")
+func (t *StudentUniversityContract) reviewAgreement(stub shim.ChaincodeStubInterface, args []string) peer.Response {
+	if len(args) != 2 {
+		return shim.Error("Incorrect number of arguments. Expecting agreement ID and decision")
+	}
+	decision := strings.ToLower(strings.TrimSpace(args[1]))
+	if decision != statusApproved && decision != statusRejected {
+		return shim.Error("Decision must be approved or rejected")
 	}
 
-	studentEmail := strings.ToLower(args[0])
+	reviewerMSP, err := cid.GetMSPID(stub)
+	if err != nil {
+		return shim.Error("Unable to identify reviewer: " + err.Error())
+	}
+	if reviewerMSP != "UniversityMSP" {
+		return shim.Error("Only a UniversityMSP member may review agreements")
+	}
+
+	record, err := loadAgreement(stub, strings.TrimSpace(args[0]))
+	if err != nil {
+		return shim.Error(err.Error())
+	}
+	if record.Status != "" && record.Status != statusSubmitted {
+		return shim.Error("Only submitted agreements may be reviewed")
+	}
+	record.Status = decision
+	record.ReviewedBy = reviewerMSP
+	record.UpdatedAt, err = transactionTime(stub)
+	if err != nil {
+		return shim.Error(err.Error())
+	}
+
+	payload, err := json.Marshal(record)
+	if err != nil {
+		return shim.Error(err.Error())
+	}
+	if err = stub.PutState(record.ContractID, payload); err != nil {
+		return shim.Error(err.Error())
+	}
+	if err = stub.SetEvent("AgreementReviewed", payload); err != nil {
+		return shim.Error(err.Error())
+	}
+	return shim.Success(payload)
+}
+
+func (t *StudentUniversityContract) verifyDocument(stub shim.ChaincodeStubInterface, args []string) peer.Response {
+	if len(args) != 2 {
+		return shim.Error("Incorrect number of arguments. Expecting agreement ID and SHA-256 hash")
+	}
+	hash := strings.ToLower(strings.TrimSpace(args[1]))
+	if !isSHA256(hash) {
+		return shim.Error("Document hash must be a SHA-256 hash")
+	}
+	record, err := loadAgreement(stub, strings.TrimSpace(args[0]))
+	if err != nil {
+		return shim.Error(err.Error())
+	}
+	result := map[string]interface{}{
+		"agreementId": record.ContractID,
+		"verified":    record.DocumentHash != "" && record.DocumentHash == hash,
+		"status":      record.Status,
+	}
+	payload, err := json.Marshal(result)
+	if err != nil {
+		return shim.Error(err.Error())
+	}
+	return shim.Success(payload)
+}
+
+func (t *StudentUniversityContract) queryByStudentEmail(stub shim.ChaincodeStubInterface, args []string) peer.Response {
+	if len(args) != 1 || strings.TrimSpace(args[0]) == "" {
+		return shim.Error("Incorrect number of arguments. Expecting one email")
+	}
 	selector := map[string]interface{}{
-		"selector": map[string]string{"Email": studentEmail},
+		"selector": map[string]string{"Email": strings.ToLower(strings.TrimSpace(args[0]))},
 	}
 	queryBytes, err := json.Marshal(selector)
 	if err != nil {
 		return shim.Error(err.Error())
 	}
-
-	queryResults, err := getQueryResultForQueryString(stubInterface, string(queryBytes))
+	results, err := queryByString(stub, string(queryBytes))
 	if err != nil {
 		return shim.Error(err.Error())
 	}
-	return shim.Success(queryResults)
+	return shim.Success(results)
 }
 
-func (t *StudentUniversityContract) getHistoryForStudent(stubInterface shim.ChaincodeStubInterface, args []string) peer.Response {
-
-	if len(args) != 2 {
-		return shim.Error("Incorrect number of arguments. Expecting 2")
+func (t *StudentUniversityContract) queryAllAgreements(stub shim.ChaincodeStubInterface, args []string) peer.Response {
+	if len(args) != 0 {
+		return shim.Error("queryAllAgreements does not accept arguments")
 	}
-
-	studentName := strings.ToLower(args[0])
-	universityName := strings.ToLower(args[1])
-
-	hash := sha256.New()
-	hash.Write([]byte(studentName + universityName))
-	contractID := hex.EncodeToString(hash.Sum(nil))
-
-	fmt.Printf("- start getHistoryForStudent: %s\n", contractID)
-
-	resultsIterator, err := stubInterface.GetHistoryForKey(contractID)
+	iterator, err := stub.GetStateByRange("", "")
 	if err != nil {
 		return shim.Error(err.Error())
 	}
-	defer resultsIterator.Close()
+	defer iterator.Close()
 
-	var buffer bytes.Buffer
-	buffer.WriteString("[")
-
-	bArrayMemberAlreadyWritten := false
-	for resultsIterator.HasNext() {
-		response, err := resultsIterator.Next()
+	records := make([]queryRecord, 0)
+	for iterator.HasNext() {
+		result, err := iterator.Next()
 		if err != nil {
 			return shim.Error(err.Error())
 		}
-		if bArrayMemberAlreadyWritten == true {
-			buffer.WriteString(",")
-		}
-		fmt.Printf("- getHistoryForStudent response: %v\n", response)
-		buffer.WriteString("{\"TxId\":")
-		buffer.WriteString("\"")
-		buffer.WriteString(response.TxId)
-		buffer.WriteString("\"")
-
-		buffer.WriteString(", \"Value\":")
-		// if it was a delete operation on given key, then we need to set the
-		//corresponding value null. Else, we will write the response.Value
-		//as-is (as the Value itself a JSON marble)
-		if response.IsDelete {
-			buffer.WriteString("null")
-		} else {
-			buffer.WriteString(string(response.Value))
-		}
-
-		buffer.WriteString(", \"Timestamp\":")
-		buffer.WriteString("\"")
-		buffer.WriteString(time.Unix(response.Timestamp.Seconds, int64(response.Timestamp.Nanos)).String())
-		buffer.WriteString("\"")
-
-		buffer.WriteString(", \"IsDelete\":")
-		buffer.WriteString("\"")
-		buffer.WriteString(strconv.FormatBool(response.IsDelete))
-		buffer.WriteString("\"")
-
-		buffer.WriteString("}")
-		bArrayMemberAlreadyWritten = true
+		records = append(records, queryRecord{Key: result.Key, Value: json.RawMessage(result.Value)})
 	}
-	buffer.WriteString("]")
-
-	fmt.Printf("- getHistoryForStudent returning:\n%s\n", buffer.String())
-
-	return shim.Success([]byte(buffer.String()))
-}
-
-func (t *StudentUniversityContract) invokeFunctionStudentUniversity(stubInterface shim.ChaincodeStubInterface, args []string) peer.Response {
-	fmt.Println("Start invokeFunctionStudentUniversity")
-	if len(args) != 1 {
-		return shim.Error("Incorrect number of arguments. Expecting 1")
-	}
-	var mykey, jsonResp string
-	var err error
-	mykey = args[0]
-	//newGasAmount := args[1]
-	valAsbytes, err := stubInterface.GetState(string(mykey))
+	payload, err := json.Marshal(records)
 	if err != nil {
-		jsonResp = "{\"Error\":\"Failed to get state for " + mykey + "\"}"
-		return shim.Error(jsonResp)
-	} else if valAsbytes == nil {
-		jsonResp = "{\"Error\":\"invokeFunctionStudentUniversity does not exist: " + mykey + "\"}"
-		return shim.Error(jsonResp)
-	}
-	fmt.Println(valAsbytes)
-	MYagreement := agreement{}
-	//umarshal the data to a new ballot struct
-	if err = json.Unmarshal(valAsbytes, &MYagreement); err != nil {
 		return shim.Error(err.Error())
 	}
-
-	fmt.Println(MYagreement)
-	return shim.Success(valAsbytes)
-
+	return shim.Success(payload)
 }
 
-// =========================================================================================
-func getQueryResultForQueryString(stubInterface shim.ChaincodeStubInterface, queryString string) ([]byte, error) {
+func (t *StudentUniversityContract) getAgreement(stub shim.ChaincodeStubInterface, args []string) peer.Response {
+	if len(args) != 1 || strings.TrimSpace(args[0]) == "" {
+		return shim.Error("Incorrect number of arguments. Expecting one agreement ID")
+	}
+	record, err := loadAgreement(stub, strings.TrimSpace(args[0]))
+	if err != nil {
+		return shim.Error(err.Error())
+	}
+	payload, err := json.Marshal(record)
+	if err != nil {
+		return shim.Error(err.Error())
+	}
+	return shim.Success(payload)
+}
 
-	fmt.Println("Inside getQueryResultForQueryString")
+func (t *StudentUniversityContract) getHistoryForStudent(stub shim.ChaincodeStubInterface, args []string) peer.Response {
+	if len(args) != 2 {
+		return shim.Error("Incorrect number of arguments. Expecting student and university names")
+	}
+	contractID := agreementID(
+		strings.ToLower(strings.TrimSpace(args[0])),
+		strings.ToLower(strings.TrimSpace(args[1])),
+	)
+	return agreementHistory(stub, contractID)
+}
 
-	fmt.Printf("- getQueryResultForQueryString queryString:\n%s\n", queryString)
+func (t *StudentUniversityContract) getHistoryForAgreement(stub shim.ChaincodeStubInterface, args []string) peer.Response {
+	if len(args) != 1 || strings.TrimSpace(args[0]) == "" {
+		return shim.Error("Incorrect number of arguments. Expecting one agreement ID")
+	}
+	return agreementHistory(stub, strings.TrimSpace(args[0]))
+}
 
-	resultsIterator, err := stubInterface.GetQueryResult(queryString)
+func agreementHistory(stub shim.ChaincodeStubInterface, contractID string) peer.Response {
+	iterator, err := stub.GetHistoryForKey(contractID)
+	if err != nil {
+		return shim.Error(err.Error())
+	}
+	defer iterator.Close()
+
+	records := make([]historyRecord, 0)
+	for iterator.HasNext() {
+		result, err := iterator.Next()
+		if err != nil {
+			return shim.Error(err.Error())
+		}
+		value := json.RawMessage("null")
+		if !result.IsDelete {
+			value = json.RawMessage(result.Value)
+		}
+		records = append(records, historyRecord{
+			TxID:      result.TxId,
+			Value:     value,
+			Timestamp: time.Unix(result.Timestamp.Seconds, int64(result.Timestamp.Nanos)).UTC().Format(time.RFC3339),
+			IsDelete:  result.IsDelete,
+		})
+	}
+	payload, err := json.Marshal(records)
+	if err != nil {
+		return shim.Error(err.Error())
+	}
+	return shim.Success(payload)
+}
+
+func queryByString(stub shim.ChaincodeStubInterface, query string) ([]byte, error) {
+	iterator, err := stub.GetQueryResult(query)
 	if err != nil {
 		return nil, err
 	}
-	defer resultsIterator.Close()
+	defer iterator.Close()
 
-	// buffer is a JSON array containing QueryRecords
-	var buffer bytes.Buffer
-	buffer.WriteString("[")
-
-	bArrayMemberAlreadyWritten := false
-	for resultsIterator.HasNext() {
-		queryResponse, err := resultsIterator.Next()
+	records := make([]queryRecord, 0)
+	for iterator.HasNext() {
+		result, err := iterator.Next()
 		if err != nil {
 			return nil, err
 		}
-		if bArrayMemberAlreadyWritten == true {
-			buffer.WriteString(",")
-		}
-		buffer.WriteString("{\"Key\":")
-		buffer.WriteString("\"")
-		buffer.WriteString(queryResponse.Key)
-		buffer.WriteString("\"")
-
-		buffer.WriteString(", \"Value\":")
-		// Record is a JSON object, so we write as-is
-		buffer.WriteString(string(queryResponse.Value))
-		buffer.WriteString("}")
-		bArrayMemberAlreadyWritten = true
+		records = append(records, queryRecord{Key: result.Key, Value: json.RawMessage(result.Value)})
 	}
-	buffer.WriteString("]")
-
-	fmt.Printf("- getQueryResultForQueryString queryResult:\n%s\n", buffer.String())
-
-	return buffer.Bytes(), nil
+	return json.Marshal(records)
 }
 
-// ===================================================================================
-// Main
-// ===================================================================================
-func main() {
-	err := shim.Start(new(StudentUniversityContract))
+func loadAgreement(stub shim.ChaincodeStubInterface, contractID string) (*agreement, error) {
+	payload, err := stub.GetState(contractID)
 	if err != nil {
-		fmt.Printf("Error starting Simple chaincode: %s", err)
+		return nil, err
+	}
+	if payload == nil {
+		return nil, fmt.Errorf("agreement %s does not exist", contractID)
+	}
+	record := &agreement{}
+	if err = json.Unmarshal(payload, record); err != nil {
+		return nil, err
+	}
+	return record, nil
+}
+
+func agreementID(studentName, universityName string) string {
+	hash := sha256.Sum256([]byte(studentName + universityName))
+	return hex.EncodeToString(hash[:])
+}
+
+func isSHA256(value string) bool {
+	if len(value) != 64 {
+		return false
+	}
+	_, err := hex.DecodeString(value)
+	return err == nil
+}
+
+func transactionTime(stub shim.ChaincodeStubInterface) (string, error) {
+	timestamp, err := stub.GetTxTimestamp()
+	if err != nil {
+		return "", fmt.Errorf("unable to read transaction timestamp: %s", err)
+	}
+	var buffer bytes.Buffer
+	buffer.WriteString(time.Unix(timestamp.Seconds, int64(timestamp.Nanos)).UTC().Format(time.RFC3339))
+	return buffer.String(), nil
+}
+
+func main() {
+	if err := shim.Start(new(StudentUniversityContract)); err != nil {
+		fmt.Printf("Error starting Yakusoku chaincode: %s", err)
 	}
 }
