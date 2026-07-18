@@ -8,6 +8,12 @@ network and chaincode operations.
 Originally built at CUHackit 2020, the project has been completed and renamed to
 **Yakusoku**, the Japanese word for "promise," to reflect the agreements it records.
 
+## Project preview
+
+![Yakusoku Ledger architecture](docs/images/architecture.svg)
+
+![Agreement API workflow](docs/images/api-workflow.svg)
+
 ## Architecture
 
 - **University organization:** two Fabric peers and one certificate authority

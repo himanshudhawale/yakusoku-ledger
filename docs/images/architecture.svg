@@ -1,0 +1,74 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1440" height="810" viewBox="0 0 1440 810">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#090d18"/>
+      <stop offset="1" stop-color="#17102a"/>
+    </linearGradient>
+    <linearGradient id="purple" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#8b5cf6"/>
+      <stop offset="1" stop-color="#d946ef"/>
+    </linearGradient>
+    <filter id="shadow" x="-30%" y="-30%" width="160%" height="160%">
+      <feDropShadow dx="0" dy="14" stdDeviation="18" flood-color="#000" flood-opacity=".42"/>
+    </filter>
+    <marker id="arrow" markerWidth="12" markerHeight="12" refX="10" refY="6" orient="auto">
+      <path d="M0,0 L12,6 L0,12 Z" fill="#a78bfa"/>
+    </marker>
+  </defs>
+
+  <rect width="1440" height="810" rx="26" fill="url(#bg)"/>
+  <circle cx="1260" cy="90" r="220" fill="#7c3aed" opacity=".08"/>
+  <circle cx="120" cy="760" r="260" fill="#db2777" opacity=".06"/>
+
+  <text x="720" y="72" text-anchor="middle" fill="#f8fafc" font-family="Segoe UI,Arial" font-size="38" font-weight="700">Yakusoku Ledger</text>
+  <text x="720" y="108" text-anchor="middle" fill="#a5b4fc" font-family="Segoe UI,Arial" font-size="18">Student–University Agreement Network</text>
+
+  <g filter="url(#shadow)">
+    <rect x="75" y="255" width="250" height="225" rx="22" fill="#141b2d" stroke="#475569"/>
+    <rect x="90" y="270" width="220" height="48" rx="12" fill="url(#purple)"/>
+    <text x="200" y="301" text-anchor="middle" fill="#fff" font-family="Segoe UI,Arial" font-size="20" font-weight="700">Clients</text>
+    <text x="110" y="357" fill="#cbd5e1" font-family="Segoe UI,Arial" font-size="17">Student</text>
+    <text x="110" y="398" fill="#cbd5e1" font-family="Segoe UI,Arial" font-size="17">University administrator</text>
+    <text x="110" y="439" fill="#cbd5e1" font-family="Segoe UI,Arial" font-size="17">Bearer authentication</text>
+
+    <rect x="420" y="220" width="280" height="295" rx="22" fill="#141b2d" stroke="#7c3aed"/>
+    <rect x="435" y="235" width="250" height="48" rx="12" fill="#312e81"/>
+    <text x="560" y="266" text-anchor="middle" fill="#fff" font-family="Segoe UI,Arial" font-size="20" font-weight="700">REST API</text>
+    <text x="455" y="326" fill="#ddd6fe" font-family="Segoe UI,Arial" font-size="17">Node.js + Express</text>
+    <text x="455" y="369" fill="#cbd5e1" font-family="Segoe UI,Arial" font-size="16">Enroll and authenticate</text>
+    <text x="455" y="407" fill="#cbd5e1" font-family="Segoe UI,Arial" font-size="16">Deploy and invoke contracts</text>
+    <text x="455" y="445" fill="#cbd5e1" font-family="Segoe UI,Arial" font-size="16">Query blocks and history</text>
+    <text x="455" y="483" fill="#86efac" font-family="Segoe UI,Arial" font-size="15">Fabric SDK 1.4.5</text>
+
+    <rect x="795" y="140" width="265" height="235" rx="22" fill="#111d2b" stroke="#22d3ee"/>
+    <rect x="810" y="155" width="235" height="48" rx="12" fill="#155e75"/>
+    <text x="928" y="186" text-anchor="middle" fill="#fff" font-family="Segoe UI,Arial" font-size="19" font-weight="700">University Org</text>
+    <text x="830" y="246" fill="#cffafe" font-family="Segoe UI,Arial" font-size="16">UniversityMSP</text>
+    <text x="830" y="285" fill="#cbd5e1" font-family="Segoe UI,Arial" font-size="16">Peer 0 + CouchDB</text>
+    <text x="830" y="323" fill="#cbd5e1" font-family="Segoe UI,Arial" font-size="16">Peer 1 + CouchDB</text>
+
+    <rect x="795" y="435" width="265" height="235" rx="22" fill="#211326" stroke="#f472b6"/>
+    <rect x="810" y="450" width="235" height="48" rx="12" fill="#9d174d"/>
+    <text x="928" y="481" text-anchor="middle" fill="#fff" font-family="Segoe UI,Arial" font-size="19" font-weight="700">Student Org</text>
+    <text x="830" y="541" fill="#fce7f3" font-family="Segoe UI,Arial" font-size="16">StudentMSP</text>
+    <text x="830" y="580" fill="#cbd5e1" font-family="Segoe UI,Arial" font-size="16">Peer 0 + CouchDB</text>
+    <text x="830" y="618" fill="#cbd5e1" font-family="Segoe UI,Arial" font-size="16">Peer 1 + CouchDB</text>
+
+    <rect x="1150" y="255" width="215" height="225" rx="22" fill="#1b1628" stroke="#fbbf24"/>
+    <rect x="1165" y="270" width="185" height="48" rx="12" fill="#92400e"/>
+    <text x="1258" y="301" text-anchor="middle" fill="#fff" font-family="Segoe UI,Arial" font-size="19" font-weight="700">Shared Ledger</text>
+    <text x="1190" y="359" fill="#fde68a" font-family="Segoe UI,Arial" font-size="16">Go chaincode</text>
+    <text x="1190" y="399" fill="#cbd5e1" font-family="Segoe UI,Arial" font-size="16">Agreements</text>
+    <text x="1190" y="437" fill="#cbd5e1" font-family="Segoe UI,Arial" font-size="16">Immutable history</text>
+  </g>
+
+  <path d="M325 368 H410" stroke="#a78bfa" stroke-width="4" marker-end="url(#arrow)"/>
+  <path d="M700 330 C745 330 745 258 785 258" fill="none" stroke="#a78bfa" stroke-width="4" marker-end="url(#arrow)"/>
+  <path d="M700 405 C745 405 745 553 785 553" fill="none" stroke="#a78bfa" stroke-width="4" marker-end="url(#arrow)"/>
+  <path d="M1060 258 C1110 258 1100 350 1140 350" fill="none" stroke="#a78bfa" stroke-width="4" marker-end="url(#arrow)"/>
+  <path d="M1060 553 C1110 553 1100 410 1140 410" fill="none" stroke="#a78bfa" stroke-width="4" marker-end="url(#arrow)"/>
+
+  <rect x="420" y="625" width="280" height="70" rx="18" fill="#0f172a" stroke="#334155"/>
+  <text x="560" y="654" text-anchor="middle" fill="#e2e8f0" font-family="Segoe UI,Arial" font-size="15">Hyperledger Fabric 1.2.1</text>
+  <text x="560" y="679" text-anchor="middle" fill="#94a3b8" font-family="Segoe UI,Arial" font-size="14">TLS • Docker Compose • CouchDB</text>
+</svg>
