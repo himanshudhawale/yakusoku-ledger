@@ -17,6 +17,7 @@ var ORGS = hfc.getConfigSetting('network-config');
 var clients = {};
 var channels = {};
 var caClients = {};
+var orgQueues = {};
 
 // set up the client and channel objects for each org
 for (let key in ORGS) {
@@ -122,8 +123,16 @@ var getChannelForOrg = function(org) {
 	return channels[org];
 };
 
-var getClientForOrg = function(org) {
-	return clients[org];
+var getClientForOrg = function(org, username) {
+	if (!username) {
+		return clients[org];
+	}
+	return getRegisteredUsers(username, org, false).then((user) => {
+		if (!user || typeof user === 'string') {
+			throw new Error(user || 'Unable to load user ' + username);
+		}
+		return clients[org].setUserContext(user).then(() => clients[org]);
+	});
 };
 
 var newPeers = function(names, org) {
@@ -155,7 +164,7 @@ var getAdminUser = function(userOrg) {
 		return client.getUserContext(username, true).then((user) => {
 			if (user && user.isEnrolled()) {
 				logger.info('Successfully loaded member from persistence');
-				return user;
+				return client.setUserContext(user).then(() => user);
 			} else {
 				let caClient = caClients[userOrg];
 				// need to enroll it with CA server
@@ -172,8 +181,7 @@ var getAdminUser = function(userOrg) {
 				}).then(() => {
 					return member;
 				}).catch((err) => {
-					logger.error('Failed to enroll and persist user. Error: ' + err.stack ?
-						err.stack : err);
+					logger.error('Failed to enroll and persist user. Error: ' + (err.stack || err));
 					return null;
 				});
 			}
@@ -194,7 +202,7 @@ var getRegisteredUsers = function(username, userOrg, isJson) {
 		return client.getUserContext(username, true).then((user) => {
 			if (user && user.isEnrolled()) {
 				logger.info('Successfully loaded member from persistence');
-				return user;
+				return client.setUserContext(user).then(() => user);
 			} else {
 				let caClient = caClients[userOrg];
 				return getAdminUser(userOrg).then(function(adminUserObj) {
@@ -213,7 +221,6 @@ var getRegisteredUsers = function(username, userOrg, isJson) {
 				}, (err) => {
 					logger.debug(username + ' failed to register');
 					return '' + err;
-					//return 'Failed to register '+username+'. Error: ' + err.stack ? err.stack : err;
 				}).then((message) => {
 					if (message && typeof message === 'string' && message.includes(
 							'Error:')) {
@@ -231,14 +238,16 @@ var getRegisteredUsers = function(username, userOrg, isJson) {
 				}, (err) => {
 					logger.error(util.format('%s enroll failed: %s', username, err.stack ? err.stack : err));
 					return '' + err;
-				});;
+				});
 			}
 		});
 	}).then((user) => {
+		if (!user || typeof user === 'string') {
+			return user || 'User enrollment failed';
+		}
 		if (isJson && isJson === true) {
 			var response = {
 				success: true,
-				secret: user._enrollmentSecret,
 				message: username + ' enrolled Successfully',
 			};
 			return response;
@@ -276,6 +285,8 @@ var getOrgAdmin = function(userOrg) {
 				privateKeyPEM: keyPEM,
 				signedCertPEM: certPEM
 			}
+		}).then((user) => {
+			return client.setUserContext(user).then(() => user);
 		});
 	});
 };
@@ -290,6 +301,13 @@ var getLogger = function(moduleName) {
 	return logger;
 };
 
+var runForOrg = function(org, operation) {
+	var previous = orgQueues[org] || Promise.resolve();
+	var current = previous.then(operation, operation);
+	orgQueues[org] = current.then(() => null, () => null);
+	return current;
+};
+
 exports.getChannelForOrg = getChannelForOrg;
 exports.getClientForOrg = getClientForOrg;
 exports.getLogger = getLogger;
@@ -300,3 +318,4 @@ exports.newPeers = newPeers;
 exports.newEventHubs = newEventHubs;
 exports.getRegisteredUsers = getRegisteredUsers;
 exports.getOrgAdmin = getOrgAdmin;
+exports.runForOrg = runForOrg;

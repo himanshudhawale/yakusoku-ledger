@@ -12,3 +12,7 @@ else
 
 hfc.addConfigFile(path.join(__dirname, 'app', file));
 hfc.addConfigFile(path.join(__dirname, 'config.json'));
+hfc.setConfigSetting(
+	'keyValueStore',
+	process.env.KEY_VALUE_STORE || path.join(__dirname, 'tmp', 'keys', 'fabric-client-kvs')
+);

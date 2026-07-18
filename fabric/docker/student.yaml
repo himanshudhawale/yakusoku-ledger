@@ -10,24 +10,23 @@ services:
       - FABRIC_CA_SERVER_CA_NAME=ca-student
       - FABRIC_CA_SERVER_TLS_ENABLED=true
       - FABRIC_CA_SERVER_TLS_CERTFILE=/etc/hyperledger/ca.student.clemson.com-cert.pem
-      - FABRIC_CA_SERVER_TLS_KEYFILE=/etc/hyperledger/1b63607d2ccbf9a4a98e71e8ec7f9f62ff43b0f744bd3c022201316ee0d805ae_sk
     ports:
       - "8054:7054"
-    command: sh -c 'fabric-ca-server start --ca.certfile /etc/hyperledger/ca.student.clemson.com-cert.pem --ca.keyfile /etc/hyperledger/1b63607d2ccbf9a4a98e71e8ec7f9f62ff43b0f744bd3c022201316ee0d805ae_sk -b admin:adminpw -d'
+    command: sh -c 'fabric-ca-server start --ca.certfile /etc/hyperledger/ca.student.clemson.com-cert.pem --ca.keyfile $$(find /etc/hyperledger -name "*_sk" | head -1) -b admin:adminpw -d'
     volumes:
       - ../channel-artifacts/certs/peerOrganizations/student.clemson.com/ca:/etc/hyperledger
 
 
   peer0-db:
     container_name: peer0-db.student.clemson.com
-    image: hyperledger/fabric-couchdb
+    image: hyperledger/fabric-couchdb:0.4.10
     environment:
       - COUCHDB_USER=studentpeer0admin
       - COUCHDB_PASSWORD=pass
 
   peer1-db:
     container_name: peer1-db.student.clemson.com
-    image: hyperledger/fabric-couchdb
+    image: hyperledger/fabric-couchdb:0.4.10
     environment:
       - COUCHDB_USER=studentpeer1admin
       - COUCHDB_PASSWORD=pass

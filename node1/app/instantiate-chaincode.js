@@ -13,7 +13,8 @@ var instantiateChaincode = async function(peers, channelName, chaincodeName, cha
 
 	try {
 		// first setup the client for this org
-		var client = await helper.getClientForOrg(org_name, username);
+		var client = helper.getClientForOrg(org_name);
+		await helper.getOrgAdmin(org_name);
 		logger.debug('Successfully got the fabric client for the organization "%s"', org_name);
 		var channel = client.getChannel(channelName);
 		if(!channel) {
@@ -30,7 +31,7 @@ var instantiateChaincode = async function(peers, channelName, chaincodeName, cha
 
 		// send proposal to endorser
 		var request = {
-			targets : peers,
+			targets: helper.newPeers(peers, org_name),
 			chaincodeId: chaincodeName,
 			// chaincodeType: chaincodeType,
 			chaincodeVersion: chaincodeVersion,
@@ -83,14 +84,15 @@ var instantiateChaincode = async function(peers, channelName, chaincodeName, cha
 						let message = 'REQUEST_TIMEOUT:' + eh.getPeerAddr();
 						logger.error(message);
 						eh.disconnect();
-					}, 60000);
+						reject(new Error(message));
+					}, parseInt(hfc.getConfigSetting('eventWaitTime'), 10));
 					eh.registerTxEvent(deployId, (tx, code, block_num) => {
 						logger.info('The chaincode instantiate transaction has been committed on peer %s',eh.getPeerAddr());
 						logger.info('Transaction %s has status of %s in blocl %s', tx, code, block_num);
 						clearTimeout(event_timeout);
 
 						if (code !== 'VALID') {
-							let message = until.format('The chaincode instantiate transaction was invalid, code:%s',code);
+							let message = util.format('The chaincode instantiate transaction was invalid, code:%s',code);
 							logger.error(message);
 							reject(new Error(message));
 						} else {
@@ -154,7 +156,7 @@ var instantiateChaincode = async function(peers, channelName, chaincodeName, cha
 			logger.debug(error_message);
 		}
 	} catch (error) {
-		logger.error('Failed to send instantiate due to error: ' + error.stack ? error.stack : error);
+		logger.error('Failed to send instantiate due to error: ' + (error.stack || error));
 		error_message = error.toString();
 	}
 

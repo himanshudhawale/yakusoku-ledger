@@ -17,33 +17,31 @@ var queryChaincode = async function(peer, channelName, chaincodeName, args, fcn,
 			throw new Error(message);
 		}
 		let txID = client.newTransactionID();
+		let target = helper.newPeers([peer], org_name)[0];
 
 
 		// send query
 		var request = {
-			targets : [peer], //queryByChaincode allows for multiple targets
+			targets: [target],
 			chaincodeId: chaincodeName,
 			fcn: fcn,
 			args: args,
-			txID: txID
+			txId: txID
 		};
 		let response_payloads = await channel.queryByChaincode(request);
 
 		if (response_payloads) {
 			logger.info(response_payloads);
-			for (let i = 0; i < response_payloads.length; i++) {
-				logger.info(args[0]+' now has ' + response_payloads[i].toString('utf8') +
-					' after the move');
-			}
-			return args[0]+' now has ' + response_payloads[0].toString('utf8') +
-				' after the move';
+			let payload = response_payloads[0].toString('utf8');
+			logger.info(payload);
+			return payload;
 		} else {
 			logger.error('response_payloads is null');
 			return 'response_payloads is null';
 		}
 	} catch(error) {
-		logger.error('Failed to query due to error: ' + error.stack ? error.stack : error);
-		return error.toString();
+		logger.error('Failed to query due to error: ' + (error.stack || error));
+		throw error;
 	}
 };
 var getBlockByNumber = async function(peer, channelName, blockNumber, username, org_name) {
@@ -58,7 +56,8 @@ var getBlockByNumber = async function(peer, channelName, blockNumber, username, 
 			throw new Error(message);
 		}
 
-		let response_payload = await channel.queryBlock(parseInt(blockNumber, peer));
+		let target = helper.newPeers([peer], org_name)[0];
+		let response_payload = await channel.queryBlock(parseInt(blockNumber, 10), target);
 		if (response_payload) {
 			logger.debug(response_payload);
 			return response_payload;
@@ -67,8 +66,8 @@ var getBlockByNumber = async function(peer, channelName, blockNumber, username, 
 			return 'response_payload is null';
 		}
 	} catch(error) {
-		logger.error('Failed to query due to error: ' + error.stack ? error.stack : error);
-		return error.toString();
+		logger.error('Failed to query due to error: ' + (error.stack || error));
+		throw error;
 	}
 };
 var getTransactionByID = async function(peer, channelName, trxnID, username, org_name) {
@@ -83,7 +82,8 @@ var getTransactionByID = async function(peer, channelName, trxnID, username, org
 			throw new Error(message);
 		}
 
-		let response_payload = await channel.queryTransaction(trxnID, peer);
+		let target = helper.newPeers([peer], org_name)[0];
+		let response_payload = await channel.queryTransaction(trxnID, target);
 		if (response_payload) {
 			logger.debug(response_payload);
 			return response_payload;
@@ -92,8 +92,8 @@ var getTransactionByID = async function(peer, channelName, trxnID, username, org
 			return 'response_payload is null';
 		}
 	} catch(error) {
-		logger.error('Failed to query due to error: ' + error.stack ? error.stack : error);
-		return error.toString();
+		logger.error('Failed to query due to error: ' + (error.stack || error));
+		throw error;
 	}
 };
 var getBlockByHash = async function(peer, channelName, hash, username, org_name) {
@@ -108,7 +108,8 @@ var getBlockByHash = async function(peer, channelName, hash, username, org_name)
 			throw new Error(message);
 		}
 
-		let response_payload = await channel.queryBlockByHash(Buffer.from(hash), peer);
+		let target = helper.newPeers([peer], org_name)[0];
+		let response_payload = await channel.queryBlockByHash(Buffer.from(hash, 'hex'), target);
 		if (response_payload) {
 			logger.debug(response_payload);
 			return response_payload;
@@ -117,8 +118,8 @@ var getBlockByHash = async function(peer, channelName, hash, username, org_name)
 			return 'response_payload is null';
 		}
 	} catch(error) {
-		logger.error('Failed to query due to error: ' + error.stack ? error.stack : error);
-		return error.toString();
+		logger.error('Failed to query due to error: ' + (error.stack || error));
+		throw error;
 	}
 };
 var getChainInfo = async function(peer, channelName, username, org_name) {
@@ -133,7 +134,8 @@ var getChainInfo = async function(peer, channelName, username, org_name) {
 			throw new Error(message);
 		}
 
-		let response_payload = await channel.queryInfo(peer);
+		let target = helper.newPeers([peer], org_name)[0];
+		let response_payload = await channel.queryInfo(target);
 		if (response_payload) {
 			logger.debug(response_payload);
 			return response_payload;
@@ -142,8 +144,8 @@ var getChainInfo = async function(peer, channelName, username, org_name) {
 			return 'response_payload is null';
 		}
 	} catch(error) {
-		logger.error('Failed to query due to error: ' + error.stack ? error.stack : error);
-		return error.toString();
+		logger.error('Failed to query due to error: ' + (error.stack || error));
+		throw error;
 	}
 };
 //getInstalledChaincodes
@@ -154,8 +156,9 @@ var getInstalledChaincodes = async function(peer, channelName, type, username, o
 		logger.debug('Successfully got the fabric client for the organization "%s"', org_name);
 
 		let response = null
+		let target = helper.newPeers([peer], org_name)[0];
 		if (type === 'installed') {
-			response = await client.queryInstalledChaincodes(peer, true); //use the admin identity
+			response = await client.queryInstalledChaincodes(target, true); //use the admin identity
 		} else {
 			var channel = client.getChannel(channelName);
 			if(!channel) {
@@ -163,7 +166,7 @@ var getInstalledChaincodes = async function(peer, channelName, type, username, o
 				logger.error(message);
 				throw new Error(message);
 			}
-			response = await channel.queryInstantiatedChaincodes(peer, true); //use the admin identity
+			response = await channel.queryInstantiatedChaincodes(target, true); //use the admin identity
 		}
 		if (response) {
 			if (type === 'installed') {
@@ -186,8 +189,8 @@ var getInstalledChaincodes = async function(peer, channelName, type, username, o
 			return 'response is null';
 		}
 	} catch(error) {
-		logger.error('Failed to query due to error: ' + error.stack ? error.stack : error);
-		return error.toString();
+		logger.error('Failed to query due to error: ' + (error.stack || error));
+		throw error;
 	}
 };
 var getChannels = async function(peer, username, org_name) {
@@ -196,7 +199,8 @@ var getChannels = async function(peer, username, org_name) {
 		var client = await helper.getClientForOrg(org_name, username);
 		logger.debug('Successfully got the fabric client for the organization "%s"', org_name);
 
-		let response = await client.queryChannels(peer);
+		let target = helper.newPeers([peer], org_name)[0];
+		let response = await client.queryChannels(target);
 		if (response) {
 			logger.debug('<<< channels >>>');
 			var channelNames = [];
@@ -210,8 +214,8 @@ var getChannels = async function(peer, username, org_name) {
 			return 'response_payloads is null';
 		}
 	} catch(error) {
-		logger.error('Failed to query due to error: ' + error.stack ? error.stack : error);
-		return error.toString();
+		logger.error('Failed to query due to error: ' + (error.stack || error));
+		throw error;
 	}
 };
 

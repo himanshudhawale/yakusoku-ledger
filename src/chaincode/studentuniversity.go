@@ -34,8 +34,7 @@ func (t *StudentUniversityContract) Init(stubInterface shim.ChaincodeStubInterfa
 	if len(args) != 5 {
 		return shim.Error("Incorrect number of arguments.")
 	}
-	t.initStudentUniversity(stubInterface, args)
-	return shim.Success(nil)
+	return t.initStudentUniversity(stubInterface, args)
 }
 
 func (t *StudentUniversityContract) Invoke(stubInterface shim.ChaincodeStubInterface) peer.Response {
@@ -113,15 +112,20 @@ func (t *StudentUniversityContract) initStudentUniversity(stubInterface shim.Cha
 // =========================================================================================
 func (t *StudentUniversityContract) queryByStudentEmail(stubInterface shim.ChaincodeStubInterface, args []string) peer.Response {
 
-	if len(args) < 1 {
+	if len(args) != 1 {
 		return shim.Error("Incorrect number of arguments. Expecting 1")
 	}
 
 	studentEmail := strings.ToLower(args[0])
+	selector := map[string]interface{}{
+		"selector": map[string]string{"Email": studentEmail},
+	}
+	queryBytes, err := json.Marshal(selector)
+	if err != nil {
+		return shim.Error(err.Error())
+	}
 
-	queryString := fmt.Sprintf("{\"selector\":{\"UniversityName\":\"Clemson\",\"StudentEmail\":\"%s\"}}", studentEmail)
-
-	queryResults, err := getQueryResultForQueryString(stubInterface, queryString)
+	queryResults, err := getQueryResultForQueryString(stubInterface, string(queryBytes))
 	if err != nil {
 		return shim.Error(err.Error())
 	}
@@ -130,8 +134,8 @@ func (t *StudentUniversityContract) queryByStudentEmail(stubInterface shim.Chain
 
 func (t *StudentUniversityContract) getHistoryForStudent(stubInterface shim.ChaincodeStubInterface, args []string) peer.Response {
 
-	if len(args) < 1 {
-		return shim.Error("Incorrect number of arguments. Expecting 1")
+	if len(args) != 2 {
+		return shim.Error("Incorrect number of arguments. Expecting 2")
 	}
 
 	studentName := strings.ToLower(args[0])
@@ -141,7 +145,7 @@ func (t *StudentUniversityContract) getHistoryForStudent(stubInterface shim.Chai
 	hash.Write([]byte(studentName + universityName))
 	contractID := hex.EncodeToString(hash.Sum(nil))
 
-	fmt.Printf("- start getHistoryForStudent", contractID)
+	fmt.Printf("- start getHistoryForStudent: %s\n", contractID)
 
 	resultsIterator, err := stubInterface.GetHistoryForKey(contractID)
 	if err != nil {
@@ -161,7 +165,7 @@ func (t *StudentUniversityContract) getHistoryForStudent(stubInterface shim.Chai
 		if bArrayMemberAlreadyWritten == true {
 			buffer.WriteString(",")
 		}
-		fmt.Printf("- getHistoryForStudent response", response)
+		fmt.Printf("- getHistoryForStudent response: %v\n", response)
 		buffer.WriteString("{\"TxId\":")
 		buffer.WriteString("\"")
 		buffer.WriteString(response.TxId)
@@ -199,6 +203,9 @@ func (t *StudentUniversityContract) getHistoryForStudent(stubInterface shim.Chai
 
 func (t *StudentUniversityContract) invokeFunctionStudentUniversity(stubInterface shim.ChaincodeStubInterface, args []string) peer.Response {
 	fmt.Println("Start invokeFunctionStudentUniversity")
+	if len(args) != 1 {
+		return shim.Error("Incorrect number of arguments. Expecting 1")
+	}
 	var mykey, jsonResp string
 	var err error
 	mykey = args[0]
@@ -214,7 +221,9 @@ func (t *StudentUniversityContract) invokeFunctionStudentUniversity(stubInterfac
 	fmt.Println(valAsbytes)
 	MYagreement := agreement{}
 	//umarshal the data to a new ballot struct
-	_ = json.Unmarshal(valAsbytes, &MYagreement)
+	if err = json.Unmarshal(valAsbytes, &MYagreement); err != nil {
+		return shim.Error(err.Error())
+	}
 
 	fmt.Println(MYagreement)
 	return shim.Success(valAsbytes)
@@ -224,7 +233,7 @@ func (t *StudentUniversityContract) invokeFunctionStudentUniversity(stubInterfac
 // =========================================================================================
 func getQueryResultForQueryString(stubInterface shim.ChaincodeStubInterface, queryString string) ([]byte, error) {
 
-	fmt.Printf("Inside getQueryResultForQueryString")
+	fmt.Println("Inside getQueryResultForQueryString")
 
 	fmt.Printf("- getQueryResultForQueryString queryString:\n%s\n", queryString)
 

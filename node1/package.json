@@ -1,10 +1,11 @@
 {
-  "name": "cuhackit",
+  "name": "academic-agreement-ledger",
   "version": "1.0.0",
-  "description": "hackathon",
-  "main": "cuhackit.js",
+  "description": "Hyperledger Fabric ledger for student-university financial agreements",
+  "main": "server.js",
   "scripts": {
-    "start": "node cuhackit.js"
+    "start": "node server.js",
+    "test": "node --check server.js && node --check app/helper.js && node --check app/create-channel.js && node --check app/join-channel.js && node --check app/install-chaincode.js && node --check app/instantiate-chaincode.js && node --check app/invoke-transaction.js && node --check app/query.js"
   },
   "keywords": [
     "fabric-client sample app",
@@ -12,24 +13,18 @@
     "v1.0 fabric nodesdk sample"
   ],
   "engines": {
-    "node": "8.6.0",
-    "npm": "5.6"
+    "node": "^8.9.0 || ^10.15.3"
   },
   "license": "Apache-2.0",
   "dependencies": {
     "body-parser": "^1.17.1",
-    "cookie-parser": "^1.4.3",
     "cors": "^2.8.3",
     "express": "^4.15.2",
     "express-bearer-token": "^2.1.0",
-    "express-jwt": "^5.1.0",
-    "express-session": "^1.15.2",
-    "fabric-ca-client": "^1.2.1",
-    "fabric-client": "^1.2.1",
+    "fabric-ca-client": "1.4.5",
+    "fabric-client": "1.4.5",
     "fs-extra": "^2.0.0",
     "jsonwebtoken": "^7.3.0",
-    "log4js": "^0.6.38",
-    "multer": "1.4.2",
-    "ipfs-http-client": "^28.1.0"
+    "log4js": "^0.6.38"
   }
 }

@@ -50,16 +50,11 @@ var installChaincode = function(peers, chaincodeName, chaincodePath,
 				'\n');
 			return 'Successfully Installed chaincode on organization ' + org;
 		} else {
-			logger.error(
-				'Failed to send install Proposal or receive valid response. Response null or status is not 200. exiting...'
-			);
-			return 'Failed to send install Proposal or receive valid response. Response null or status is not 200. exiting...';
+			throw new Error('Failed to install chaincode: a peer rejected the proposal');
 		}
 	}, (err) => {
-		logger.error('Failed to send install proposal due to error: ' + err.stack ?
-			err.stack : err);
-		throw new Error('Failed to send install proposal due to error: ' + err.stack ?
-			err.stack : err);
+		logger.error('Failed to send install proposal due to error: ' + (err.stack || err));
+		throw new Error('Failed to send install proposal due to error: ' + (err.message || err));
 	});
 };
 exports.installChaincode = installChaincode;

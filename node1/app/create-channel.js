@@ -50,9 +50,8 @@ var createChannel = function(channelName, channelConfigPath, username, orgName) 
 			throw new Error('Failed to create the channel \'' + channelName + '\'');
 		}
 	}, (err) => {
-		logger.error('Failed to initialize the channel: ' + err.stack ? err.stack :
-			err);
-		throw new Error('Failed to initialize the channel: ' + err.stack ? err.stack : err);
+		logger.error('Failed to initialize the channel: ' + (err.stack || err));
+		throw new Error('Failed to initialize the channel: ' + (err.message || err));
 	});
 };
 

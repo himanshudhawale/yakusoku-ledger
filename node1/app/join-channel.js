@@ -12,6 +12,7 @@ var joinChannel = async function(channel_name, peers, username, org_name) {
 	logger.debug('\n\n============ Join Channel start ============\n')
 	var error_message = null;
 	var all_eventhubs = [];
+	var tx_id = null;
 	try {
 		logger.info('Calling peers in organization "%s" to join the channel', org_name);
 
@@ -24,7 +25,7 @@ var joinChannel = async function(channel_name, peers, username, org_name) {
 			logger.error(message);
 			throw new Error(message);
 		}
-			var admin = await helper.getOrgAdmin(org_name);
+			await helper.getOrgAdmin(org_name);
 			logger.info(util.format('received member object for admin of the organization "%s": ', org_name));
 			tx_id = client.newTransactionID();
 			let request = {
@@ -44,7 +45,7 @@ var joinChannel = async function(channel_name, peers, username, org_name) {
 		promises.push(new Promise(resolve => setTimeout(resolve, 10000)));
 
 		let join_request = {
-			targets: peers, //using the peer names which only is allowed when a connection profile is loaded
+			targets: helper.newPeers(peers, org_name),
 			txId: client.newTransactionID(true), //get an admin based transactionID
 			block: genesis_block
 		};
@@ -69,7 +70,7 @@ var joinChannel = async function(channel_name, peers, username, org_name) {
 			}
 		}
 	} catch(error) {
-		logger.error('Failed to join channel due to error: ' + error.stack ? error.stack : error);
+		logger.error('Failed to join channel due to error: ' + (error.stack || error));
 		error_message = error.toString();
 	}
 

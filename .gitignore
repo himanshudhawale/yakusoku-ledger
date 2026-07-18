@@ -5,3 +5,14 @@
 **/keystore/*
 **/tls/*.key
 
+# Dependencies and local runtime state
+node_modules/
+node1/tmp/
+node1/upload/
+
+# Generated Fabric network material
+fabric/channel-artifacts/certs/
+fabric/channel-artifacts/channel/
+
+# OS/editor files
+.DS_Store

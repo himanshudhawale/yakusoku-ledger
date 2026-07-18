@@ -26,7 +26,7 @@ var invokeChaincode = async function(peerNames, channelName, chaincodeName, fcn,
 
 		// send proposal to endorser
 		var request = {
-			targets: peerNames,
+			targets: helper.newPeers(peerNames, org_name),
 			chaincodeId: chaincodeName,
 			fcn: fcn,
 			args: args,
@@ -75,7 +75,8 @@ var invokeChaincode = async function(peerNames, channelName, chaincodeName, fcn,
 						let message = 'REQUEST_TIMEOUT:' + eh.getPeerAddr();
 						logger.error(message);
 						eh.disconnect();
-					}, 3000);
+						reject(new Error(message));
+					}, parseInt(hfc.getConfigSetting('eventWaitTime'), 10));
 					eh.registerTxEvent(tx_id_string, (tx, code, block_num) => {
 						logger.info('The chaincode invoke chaincode transaction has been committed on peer %s',eh.getPeerAddr());
 						logger.info('Transaction %s has status of %s in blocl %s', tx, code, block_num);
@@ -142,7 +143,7 @@ var invokeChaincode = async function(peerNames, channelName, chaincodeName, fcn,
 			logger.debug(error_message);
 		}
 	} catch (error) {
-		logger.error('Failed to invoke due to error: ' + error.stack ? error.stack : error);
+		logger.error('Failed to invoke due to error: ' + (error.stack || error));
 		error_message = error.toString();
 	}
 

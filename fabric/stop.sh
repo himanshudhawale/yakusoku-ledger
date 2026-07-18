@@ -1,3 +1,6 @@
-export COMPOSE_PROJECT_NAME=clemson
+#!/usr/bin/env bash
+set -euo pipefail
 
-docker-compose -f docker/docker-compose-sdk.yaml down
+cd "$(dirname "$0")"
+export COMPOSE_PROJECT_NAME=academicledger
+docker compose -f docker/docker-compose-sdk.yaml down
