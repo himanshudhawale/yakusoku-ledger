@@ -109,6 +109,7 @@ type queryRecord struct {
 }
 
 type historyRecord struct {
+	Key       string          `json:"Key,omitempty"`
 	TxID      string          `json:"TxId"`
 	Value     json.RawMessage `json:"Value"`
 	Timestamp string          `json:"Timestamp"`
@@ -151,6 +152,8 @@ func (t *StudentUniversityContract) Invoke(stub shim.ChaincodeStubInterface) pee
 		return t.queryAllAgreements(stub, args)
 	case "getHistoryForStudent":
 		return t.getHistoryForStudent(stub, args)
+	case "getHistoryForStudentLegacy":
+		return t.getHistoryForStudentLegacy(stub, args)
 	case "getHistoryForAgreement":
 		return t.getHistoryForAgreement(stub, args)
 	case "invokeFunctionStudentUniversity", "getAgreement":
@@ -808,6 +811,58 @@ func (t *StudentUniversityContract) getHistoryForStudent(stub shim.ChaincodeStub
 	if len(args) != 2 {
 		return shim.Error("Incorrect number of arguments. Expecting student and university names")
 	}
+	if err := requirePIIReader(stub); err != nil {
+		return shim.Error(err.Error())
+	}
+	studentName := strings.ToLower(strings.TrimSpace(args[0]))
+	universityName := strings.ToLower(strings.TrimSpace(args[1]))
+
+	selector := map[string]interface{}{
+		"selector": map[string]string{"UniversityName": universityName},
+	}
+	queryBytes, err := json.Marshal(selector)
+	if err != nil {
+		return shim.Error(err.Error())
+	}
+	iterator, err := stub.GetQueryResult(string(queryBytes))
+	if err != nil {
+		return shim.Error(err.Error())
+	}
+	defer iterator.Close()
+
+	entries := make([]historyRecord, 0)
+	for iterator.HasNext() {
+		result, err := iterator.Next()
+		if err != nil {
+			return shim.Error(err.Error())
+		}
+		record, err := agreementWithPrivateData(stub, result.Value)
+		if err != nil {
+			continue
+		}
+		if strings.ToLower(strings.TrimSpace(record.StudentName)) != studentName {
+			continue
+		}
+		records, err := getHistoryForKey(stub, result.Key)
+		if err != nil {
+			continue
+		}
+		for _, r := range records {
+			r.Key = result.Key
+			entries = append(entries, r)
+		}
+	}
+	payload, err := json.Marshal(entries)
+	if err != nil {
+		return shim.Error(err.Error())
+	}
+	return shim.Success(payload)
+}
+
+func (t *StudentUniversityContract) getHistoryForStudentLegacy(stub shim.ChaincodeStubInterface, args []string) peer.Response {
+	if len(args) != 2 {
+		return shim.Error("Incorrect number of arguments. Expecting student and university names")
+	}
 	contractID := agreementID(
 		strings.ToLower(strings.TrimSpace(args[0])),
 		strings.ToLower(strings.TrimSpace(args[1])),
@@ -822,13 +877,10 @@ func (t *StudentUniversityContract) getHistoryForAgreement(stub shim.ChaincodeSt
 	return agreementHistory(stub, strings.TrimSpace(args[0]))
 }
 
-func agreementHistory(stub shim.ChaincodeStubInterface, contractID string) peer.Response {
-	if err := requirePIIReader(stub); err != nil {
-		return shim.Error(err.Error())
-	}
-	iterator, err := stub.GetHistoryForKey(contractID)
+func getHistoryForKey(stub shim.ChaincodeStubInterface, key string) ([]historyRecord, error) {
+	iterator, err := stub.GetHistoryForKey(key)
 	if err != nil {
-		return shim.Error(err.Error())
+		return nil, err
 	}
 	defer iterator.Close()
 
@@ -836,7 +888,7 @@ func agreementHistory(stub shim.ChaincodeStubInterface, contractID string) peer.
 	for iterator.HasNext() {
 		result, err := iterator.Next()
 		if err != nil {
-			return shim.Error(err.Error())
+			return nil, err
 		}
 		value := json.RawMessage("null")
 		if !result.IsDelete {
@@ -848,6 +900,17 @@ func agreementHistory(stub shim.ChaincodeStubInterface, contractID string) peer.
 			Timestamp: time.Unix(result.Timestamp.Seconds, int64(result.Timestamp.Nanos)).UTC().Format(time.RFC3339),
 			IsDelete:  result.IsDelete,
 		})
+	}
+	return records, nil
+}
+
+func agreementHistory(stub shim.ChaincodeStubInterface, contractID string) peer.Response {
+	if err := requirePIIReader(stub); err != nil {
+		return shim.Error(err.Error())
+	}
+	records, err := getHistoryForKey(stub, contractID)
+	if err != nil {
+		return shim.Error(err.Error())
 	}
 	payload, err := json.Marshal(records)
 	if err != nil {
