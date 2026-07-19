@@ -183,8 +183,9 @@ The runnable `node1/testAPI.sh` script contains request examples for the full wo
 | `queryByStudentName` | student name | Find all agreements for a student |
 | `queryByUniversityName` | university name | Find all agreements for a university |
 | `queryAllAgreements` | none | Return dashboard and analytics records |
-| `getHistoryForStudent` | student name, university name | Return agreement history |
-| `getHistoryForAgreement` | agreement ID | Return the immutable audit trail |
+| `getHistoryForStudent` | student name, university name | Return agreement history for all v3 agreements matching a student/university pair |
+| `getHistoryForStudentLegacy` | student name, university name | *(legacy)* Return agreement history using hash-based key lookup (works only for pre-v3 records) |
+| `getHistoryForAgreement` | agreement ID | Return the immutable audit trail for any agreement |
 | `getAgreement` | agreement ID | Read an agreement by ID |
 | `verifyDocument` | agreement ID, SHA-256 | Compare a local file with the ledger |
 | `reviewAgreement` | agreement ID, decision | University approval or rejection |

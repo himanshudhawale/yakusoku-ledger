@@ -76,6 +76,28 @@ printf '%s' "$history" | jq -e '
 	and has("Email") == false
 	and (.StudentCommitment | test("^[a-f0-9]{64}$"))
 	' >/dev/null
+
+# Helper: chaincode query endpoint returns a JSON string inside JSON (double-encoded).
+# Extract the inner payload before asserting.
+decode_chaincode_response() {
+	printf '%s' "$1" | jq -r '.'
+}
+
+# Test getHistoryForStudent (query-based, works with v3 AGR-... keys)
+history_args=$(printf '["ada lovelace","clemson university"]' | jq -sRr @uri)
+history_v3=$(request "$org2_token" GET "/channels/channel1/chaincodes/studentuniversity?peer=peer1&fcn=getHistoryForStudent&args=$history_args")
+decode_chaincode_response "$history_v3" | jq -e '
+	length >= 2
+	and (.[0].Key | test("^AGR-"))
+	and (.[1].Key | test("^AGR-"))
+	and .[0].Key != .[1].Key
+	' >/dev/null
+
+# Test getHistoryForStudentLegacy (hash-based, returns empty for v3 keys)
+history_legacy_args=$(printf '["ada lovelace","clemson university"]' | jq -sRr @uri)
+history_legacy=$(request "$org2_token" GET "/channels/channel1/chaincodes/studentuniversity?peer=peer1&fcn=getHistoryForStudentLegacy&args=$history_legacy_args")
+decode_chaincode_response "$history_legacy" | jq -e 'length == 0' >/dev/null
+
 identity_response=$(request "$org2_token" POST "/api/agreements/$agreement_id/identity/verify" \
 	'{"email":"ada@example.com"}')
 printf '%s' "$identity_response" | jq -e '.verified == true' >/dev/null
